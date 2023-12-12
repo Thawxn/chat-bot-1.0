@@ -1,4 +1,4 @@
-// ChatController.js
+import Store from '../models/Store.js';
 import twilioClient from '../config/twilio.js';
 
 class ChatController {
@@ -6,24 +6,36 @@ class ChatController {
     const { From, Body } = req.body;
 
     try {
-      // Analisa a mensagem recebida em letras minúsculas para tornar a comparação sem distinção entre maiúsculas e minúsculas
-      const lowerCaseBody = Body.toLowerCase();
+      // Consultar o banco de dados para obter informações da loja com base na mensagem
+      const storeInfo = await Store.find().select(Body.toLowerCase()).lean();
 
-      // Verifica se a mensagem recebida é um "oi"
-      if (lowerCaseBody === 'oi' || lowerCaseBody === 'olá') {
-        // Se for um "oi", envia uma resposta de "Hello World"
+      const modifiedResponse = storeInfo.map(item => {
+        // eslint-disable-next-line no-unused-vars
+        const { _id, ...rest } = item;
+        return rest;
+      });
+
+      console.log(modifiedResponse[0].name);
+
+      if (modifiedResponse) {
+        // Se encontrou informações da loja, envia a resposta
         await twilioClient.messages.create({
-          body: 'Hello World!',
+          body: `Informações da Loja:\nNome: ${modifiedResponse[0].name}`,
           from: 'whatsapp:+14155238886',
           to: `whatsapp:${From}`,
         });
 
-        console.log('Resposta enviada: Hello World!');
-      }
+        console.log('Resposta enviada: Informações da Loja');
+      } else {
+        // Se não encontrou informações da loja, envia uma resposta padrão
+        await twilioClient.messages.create({
+          body: 'Desculpe, não encontramos informações para a palavra-chave fornecida.',
+          from: 'whatsapp:+14155238886',
+          to: `whatsapp:${From}`,
+        });
 
-      // Log da mensagem recebida
-      console.log(`Mensagem recebida do número: ${From}`);
-      console.log(`Conteúdo da mensagem: ${Body}`);
+        console.log('Resposta enviada: Informações não encontradas');
+      }
 
       return res
         .status(200)
