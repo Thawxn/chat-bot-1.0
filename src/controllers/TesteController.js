@@ -2,10 +2,8 @@ import Store from '../models/Store.js';
 
 class TesteController {
   async testeDePesquisa(req, res) {
-    const { body } = req.body;
-
     try {
-      const response = await Store.find().select(body).lean();
+      const response = await Store.find().select({ name: 1 }).lean();
 
       // Remover o campo _id manualmente de cada objeto no array
       const modifiedResponse = response.map(item => {
@@ -14,7 +12,7 @@ class TesteController {
         return rest;
       });
 
-      console.log(modifiedResponse);
+      console.log(response);
       return res.status(200).json(modifiedResponse);
     } catch (err) {
       console.log(err);

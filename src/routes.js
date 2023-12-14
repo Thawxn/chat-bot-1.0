@@ -27,7 +27,7 @@ routes.post('/session', SessionController.session); // logando na aplicação
 routes.post('/store/register', middleware.authUser, StoreController.register);
 
 // chat
-routes.post('/incoming', ChatController.zapMessege);
+routes.post('/incoming', (req, res) => ChatController.zapMessage(req, res));
 
 // teste
 routes.post('/teste', TesteController.testeDePesquisa);

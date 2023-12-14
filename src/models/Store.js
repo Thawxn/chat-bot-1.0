@@ -6,6 +6,7 @@ const StoreSchema = new Schema(
     cnpj: { type: String, required: true, unique: true },
     phone: { type: Number, required: true },
     location: { type: String, required: true },
+    openingHours: { type: String, required: true },
     description: { type: String },
     user: { type: Schema.Types.ObjectId, ref: 'User' },
   },
