@@ -6,6 +6,7 @@ import UserController from './controllers/UserController.js';
 import SessionController from './controllers/SessionController.js';
 import StoreController from './controllers/StoreController.js';
 import OilController from './controllers/OilController.js';
+import OilFilterController from './controllers/OilFilterController.js';
 import ChatController from './controllers/Chatcontroller.js';
 
 // importando middleware
@@ -30,15 +31,38 @@ routes.put('/store/edit/:id', middleware.authUser, StoreController.edit); // edi
 routes.delete('/store/delete/:id', middleware.authUser, StoreController.delete); // deletando informação da loja
 
 // Oil
-routes.get('/oil', middleware.authUser, OilController.index);
+routes.get('/oil', middleware.authUser, OilController.index); // Listagem de óleos
 routes.get(
   '/oil/:name/:viscosity',
   middleware.authUser,
   OilController.indexOne,
-);
-routes.post('/oil/register', middleware.authUser, OilController.register);
-routes.put('/oil/edit/:id', middleware.authUser, OilController.edit);
-routes.delete('/oil/delete/:id', middleware.authUser, OilController.delete);
+); // Listagem de óleo por nome e viscosidade
+routes.post('/oil/register', middleware.authUser, OilController.register); // registro de óleo
+routes.put('/oil/edit/:id', middleware.authUser, OilController.edit); // editando informações de óleo
+routes.delete('/oil/delete/:id', middleware.authUser, OilController.delete); // deletando óleo
+
+// Oil Filter
+routes.get('/oilFilter', middleware.authUser, OilFilterController.index); // listagem de filtro de óleo
+routes.get(
+  '/oilFilter/:name',
+  middleware.authUser,
+  OilFilterController.indexOne,
+); // listagem de filtro de óleo por nome
+routes.post(
+  '/oilFilter/register',
+  middleware.authUser,
+  OilFilterController.register,
+); // registro de filtro de óleo
+routes.put(
+  '/oilFilter/edit/:id',
+  middleware.authUser,
+  OilFilterController.edit,
+); // editando informação de filtro de óleo
+routes.delete(
+  '/oilFilter/delete/:id',
+  middleware.authUser,
+  OilFilterController.delete,
+); // deletando filtro de óleo
 
 // chat
 routes.post('/incoming', (req, res) => ChatController.zapMessage(req, res)); // rota de envio de mensagem 'Chatbot'
