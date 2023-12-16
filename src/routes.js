@@ -5,6 +5,7 @@ import HomeController from './controllers/HomeController.js';
 import UserController from './controllers/UserController.js';
 import SessionController from './controllers/SessionController.js';
 import StoreController from './controllers/StoreController.js';
+import CarController from './controllers/CarController.js';
 import OilController from './controllers/OilController.js';
 import OilFilterController from './controllers/OilFilterController.js';
 import ChatController from './controllers/Chatcontroller.js';
@@ -29,6 +30,17 @@ routes.get('/store', middleware.authUser, StoreController.index); // listagem de
 routes.post('/store/register', middleware.authUser, StoreController.register); // registro de informação da loja
 routes.put('/store/edit/:id', middleware.authUser, StoreController.edit); // editando informações da loja
 routes.delete('/store/delete/:id', middleware.authUser, StoreController.delete); // deletando informação da loja
+
+// Car
+routes.get('/car', middleware.authUser, CarController.index);
+routes.get(
+  '/car/:automaker/:engine',
+  middleware.authUser,
+  CarController.indexOne,
+);
+routes.post('/car/register', middleware.authUser, CarController.register);
+routes.put('/car/edit/:id', middleware.authUser, CarController.edit);
+routes.delete('/car/delete/:id', middleware.authUser, CarController.delete);
 
 // Oil
 routes.get('/oil', middleware.authUser, OilController.index); // Listagem de óleos
