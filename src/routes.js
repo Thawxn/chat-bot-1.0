@@ -32,15 +32,15 @@ routes.put('/store/edit/:id', middleware.authUser, StoreController.edit); // edi
 routes.delete('/store/delete/:id', middleware.authUser, StoreController.delete); // deletando informação da loja
 
 // Car
-routes.get('/car', middleware.authUser, CarController.index);
+routes.get('/car', middleware.authUser, CarController.index); // listagem de todos os carros
 routes.get(
   '/car/:automaker/:engine',
   middleware.authUser,
   CarController.indexOne,
-);
-routes.post('/car/register', middleware.authUser, CarController.register);
-routes.put('/car/edit/:id', middleware.authUser, CarController.edit);
-routes.delete('/car/delete/:id', middleware.authUser, CarController.delete);
+); // listagem de carro por montadora e motor
+routes.post('/car/register', middleware.authUser, CarController.register); // registro de carro
+routes.put('/car/edit/:id', middleware.authUser, CarController.edit); // editando informações de carro
+routes.delete('/car/delete/:id', middleware.authUser, CarController.delete); // deletendo informação de carro
 
 // Oil
 routes.get('/oil', middleware.authUser, OilController.index); // Listagem de óleos
