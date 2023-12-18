@@ -1,8 +1,7 @@
-// Importa o módulo Yup para validação de esquemas
 import * as Yup from 'yup';
-
-// Importa o modelo de Carro definido em '../models/Car.js'
 import Car from '../models/Car.js';
+import Oil from '../models/Oil.js';
+import OilFilter from '../models/OilFilter.js';
 
 // Define a classe CarController responsável por lidar com as operações relacionadas a Carros
 class CarController {
@@ -55,6 +54,76 @@ class CarController {
     }
   }
 
+  async indexValue(req, res) {
+    const { id } = req.params;
+    const { preferredOilName, preferredViscosity } = req.body;
+
+    try {
+      const car = await Car.findById(id);
+
+      // Utiliza o óleo preferido se informado, senão, utiliza o óleo padrão do carro
+      const oilFilterId = car.oilFilter;
+
+      // Busca informações do óleo padrão do carro
+      const oilDocument = await Oil.findById(car.oil);
+
+      if (!oilDocument) {
+        return res.status(404).json({
+          message: 'Informação de óleo não foi encontrada.',
+        });
+      }
+
+      // Verifica se o cliente especificou uma viscosidade preferida
+      const oilViscosity = preferredViscosity || car.viscosity;
+
+      // Busca o óleo com a marca e viscosidade preferida ou, se não encontrado, busca o óleo padrão
+      const oilWithPreferredViscosity = await Oil.findOne({
+        name: preferredOilName,
+        viscosity: oilViscosity,
+      });
+
+      // Usa o óleo com viscosidade preferida se encontrado, senão, usa o óleo padrão
+      const selectedOil = oilWithPreferredViscosity || oilDocument;
+
+      // Busca informações do filtro de óleo
+      const oilFilterDocument = await OilFilter.findById(oilFilterId);
+
+      if (!oilFilterDocument) {
+        return res.status(404).json({
+          message: 'Informação de filtro de óleo não foi encontrada.',
+        });
+      }
+
+      let message = `Seu carro requer exatamente ${car.exact_quantity} litros de óleo, e, como cada litro de óleo corresponde a um litro, a quantidade total a ser usada será de ${car.oil_quantity} litros.`;
+
+      // Adiciona a viscosidade na mensagem, usando a preferida ou a padrão do carro
+      message += ` Recomendamos óleo com viscosidade ${
+        preferredViscosity || car.viscosity
+      }.`;
+
+      if (preferredOilName && !oilWithPreferredViscosity) {
+        message += ` Infelizmente, o óleo preferido "${preferredOilName}" com viscosidade "${preferredViscosity}" não foi encontrado. Sugerimos o ${selectedOil.name} com viscosidade ${car.viscosity}, que está em promoção.`;
+      }
+
+      const oilNameInResponse = oilWithPreferredViscosity
+        ? `${selectedOil.name} (${preferredViscosity || oilViscosity})`
+        : 'promocional';
+
+      const oilValue =
+        parseFloat(selectedOil.price) * parseFloat(car.oil_quantity);
+      const exchangeValue = oilValue + parseFloat(oilFilterDocument.price);
+
+      message += ` O valor estimado para a troca completa com o óleo ${oilNameInResponse} é R$${exchangeValue.toFixed(
+        2,
+      )}.`;
+
+      return res.status(200).json({ message });
+    } catch (err) {
+      console.error('Erro ao buscar orçamento do carro', err);
+      return res.status(500).json({ err: 'Erro ao buscar orçamento do carro' });
+    }
+  }
+
   // Método para registrar um novo carro no banco de dados
   async register(req, res) {
     // Define um esquema Yup para validar os dados recebidos na requisição
@@ -64,8 +133,9 @@ class CarController {
       year: Yup.number().required(),
       cylinder: Yup.number().required(),
       gear: Yup.number().required(),
-      motor_oil: Yup.number().required(),
+      exact_quantity: Yup.number().required(),
       oil_quantity: Yup.number().required(),
+      viscosity: Yup.string().required(),
       oil_id: Yup.string().required(),
       oilFilter_id: Yup.string().required(),
     });
@@ -77,8 +147,9 @@ class CarController {
       year,
       cylinder,
       gear,
-      motor_oil,
+      exact_quantity,
       oil_quantity,
+      viscosity,
       oil_id,
       oilFilter_id,
     } = req.body;
@@ -98,8 +169,9 @@ class CarController {
         year,
         cylinder,
         gear,
-        motor_oil,
+        exact_quantity,
         oil_quantity,
+        viscosity,
         oil: oil_id,
         oilFilter: oilFilter_id,
       });
@@ -125,8 +197,9 @@ class CarController {
       year,
       cylinder,
       gear,
-      motor_oil,
+      exact_quantity,
       oil_quantity,
+      viscosity,
       oil_id,
       oilFilter_id,
     } = req.body;
@@ -144,8 +217,9 @@ class CarController {
         year,
         cylinder,
         gear,
-        motor_oil,
+        exact_quantity,
         oil_quantity,
+        viscosity,
         oil_id,
         oilFilter_id,
       });

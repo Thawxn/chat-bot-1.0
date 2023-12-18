@@ -38,6 +38,7 @@ routes.get(
   middleware.authUser,
   CarController.indexOne,
 ); // listagem de carro por montadora e motor
+routes.get('/car/:id', middleware.authUser, CarController.indexValue);
 routes.post('/car/register', middleware.authUser, CarController.register); // registro de carro
 routes.put('/car/edit/:id', middleware.authUser, CarController.edit); // editando informações de carro
 routes.delete('/car/delete/:id', middleware.authUser, CarController.delete); // deletendo informação de carro
