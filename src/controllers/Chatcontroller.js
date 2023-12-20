@@ -1,5 +1,7 @@
+/* eslint-disable prefer-destructuring */
 import Store from '../models/Store.js';
 import twilioClient from '../config/twilio.js';
+import Car from '../models/Car.js';
 
 class ChatController {
   // Função principal para processar mensagens do WhatsApp
@@ -22,17 +24,17 @@ class ChatController {
       for (const part of parts) {
         // Verifica se a mensagem é uma saudação
         if (this.isGreeting(part)) {
-          // Adiciona a tarefa assíncrona de lidar com a saudação ao array
           tasks.push(this.handleGreeting(From));
         } else if (this.isLocationRequest(part)) {
-          // Adiciona a tarefa assíncrona de lidar com a solicitação de localização ao array
           tasks.push(this.handleLocationRequest(From));
         } else if (this.isNameRequest(part)) {
-          // Adiciona a tarefa assíncrona de lidar com a solicitação de nome ao array
           tasks.push(this.handleNameRequest(From));
         } else if (this.isOpeHoursRequest(part)) {
-          // Adiciona a tarefa assíncrona de lidar com a solicitação de horário de funcionamento ao array
           tasks.push(this.handleOpenHoursRequest(From));
+        } else if (this.isBudgetFiatRequest(part)) {
+          tasks.push(this.handleFiatBudgetStep1(From));
+        } else if (this.checkCarSpecification(part)) {
+          console.log('sim');
         }
       }
 
@@ -73,7 +75,10 @@ class ChatController {
 
   // Envia uma resposta para uma saudação
   async handleGreeting(to) {
-    await this.sendMessage(to, 'Olá! Como posso ajudar você hoje?');
+    await this.sendMessage(
+      to,
+      'Olá! Sou o ChatBot e estou aqui para atender você, caso precise de um orçamento por favor digite as informações do seu veículo dessa forma "montadora do veículo, nome do veículo", também consigo fornecer informação básica sobre a loja como localização e horário de funcionamento.',
+    );
     console.log('Resposta enviada: Saudação');
   }
 
@@ -184,6 +189,42 @@ class ChatController {
       );
       console.log('Resposta enviada: Informações não encontradas');
     }
+  }
+
+  // Verificar montadora do carro para passar orçamento
+  isBudgetFiatRequest(body) {
+    return body.includes('fiat');
+  }
+
+  // Enviar uma resposta para uma solicitação de orçamento Fiat
+  async handleFiatBudgetStep1(to) {
+    await this.sendMessage(
+      to,
+      'Para fornecer um orçamento preciso, precisamos de algumas informações sobre o seu veículo Fiat.\n\nPor favor, informe o nome do motor (por exemplo, Fire, FireFly, Evo, E-Torq), as cilindradas (1.0, 1.3, etc.) e o ano do veículo. Digite as informações no seguinte formato: "Nome do Motor, Cilindradas, Ano".',
+    );
+    console.log('Resposta enviada: Solicitação de Informações do Veículo Fiat');
+  }
+
+  async checkCarSpecification(body) {
+    const lowerCaseMessage = body.toLowerCase();
+    const tokens = lowerCaseMessage.split(' ');
+
+    const engineCar = tokens.find(token =>
+      ['firefly', 'evo', 'e-torq', 'fire'].includes(token),
+    );
+    const cylinderCar = tokens.find(token =>
+      ['1.0', '1.3', '1.6', '4'].includes(token),
+    );
+    const yearCar = tokens.find(token => /\b\d{4}\b/.test(token));
+
+    const inforCar = await Car.findOne({
+      engine: engineCar,
+      cylinder: cylinderCar,
+      year: yearCar,
+    });
+
+    console.log(inforCar);
+    return inforCar;
   }
 
   // Função auxiliar para enviar mensagens usando o cliente Twilio
