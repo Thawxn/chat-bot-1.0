@@ -6,11 +6,17 @@ const CarSchema = new Schema(
     // Campo para o fabricante do carro (obrigatório)
     automaker: { type: String, required: true },
 
+    // Campo para o nome do motor do carro (obrigatório)
+    engine_name: { type: String, required: true },
+
     // Campo para o tipo de motor do carro (obrigatório)
     engine: { type: String, required: true },
 
-    // Campo para o ano de fabricação do carro (obrigatório)
-    year: { type: Number, required: true },
+    // Campo para inicio de fabricação do motor (obrigatório)
+    year_init: { type: Number, required: true },
+
+    // Campo para o fim da fabricação do carro (obrigatório)
+    year_end: { type: Number, required: true },
 
     // Campo para o número de cilindros do motor do carro (obrigatório)
     cylinder: { type: Number, required: true },

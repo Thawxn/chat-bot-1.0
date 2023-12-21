@@ -130,8 +130,10 @@ class CarController {
     // Define um esquema Yup para validar os dados recebidos na requisição
     const schema = Yup.object().shape({
       automaker: Yup.string().required(),
+      engine_name: Yup.string().required(),
       engine: Yup.string().required(),
-      year: Yup.number().required(),
+      year_init: Yup.number().required(),
+      year_end: Yup.number().required(),
       cylinder: Yup.number().required(),
       gear: Yup.number().required(),
       exact_quantity: Yup.number().required(),
@@ -144,8 +146,10 @@ class CarController {
     // Extrai os dados relevantes do corpo da requisição
     const {
       automaker,
+      engine_name,
       engine,
-      year,
+      year_init,
+      year_end,
       cylinder,
       gear,
       exact_quantity,
@@ -166,8 +170,10 @@ class CarController {
       // Cria um novo carro no banco de dados com base nos dados recebidos
       const newCar = await Car.create({
         automaker,
+        engine_name,
         engine,
-        year,
+        year_init,
+        year_end,
         cylinder,
         gear,
         exact_quantity,
@@ -194,8 +200,10 @@ class CarController {
     // Extrai os dados relevantes do corpo da requisição
     const {
       automaker,
+      engine_name,
       engine,
-      year,
+      year_init,
+      year_end,
       cylinder,
       gear,
       exact_quantity,
@@ -214,8 +222,10 @@ class CarController {
       // Atualiza as informações do carro no banco de dados com base no ID
       const updateCar = await Car.findByIdAndUpdate(id, {
         automaker,
+        engine_name,
         engine,
-        year,
+        year_init,
+        year_end,
         cylinder,
         gear,
         exact_quantity,

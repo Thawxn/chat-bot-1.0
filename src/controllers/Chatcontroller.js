@@ -2,6 +2,8 @@
 import Store from '../models/Store.js';
 import twilioClient from '../config/twilio.js';
 import Car from '../models/Car.js';
+import Oil from '../models/Oil.js';
+import OilFilter from '../models/OilFilter.js';
 
 class ChatController {
   // Função principal para processar mensagens do WhatsApp
@@ -33,7 +35,7 @@ class ChatController {
           tasks.push(this.handleOpenHoursRequest(From));
         } else if (this.isBudgetFiatRequest(part)) {
           tasks.push(this.handleFiatBudgetStep1(From));
-        } else if (this.checkCarSpecification(part)) {
+        } else if (this.checkCarSpecification(part, From)) {
           console.log('sim');
         }
       }
@@ -205,26 +207,42 @@ class ChatController {
     console.log('Resposta enviada: Solicitação de Informações do Veículo Fiat');
   }
 
-  async checkCarSpecification(body) {
+  async checkCarSpecification(body, to) {
     const lowerCaseMessage = body.toLowerCase();
     const tokens = lowerCaseMessage.split(' ');
 
-    const engineCar = tokens.find(token =>
+    const engineCarname = tokens.find(token =>
       ['firefly', 'evo', 'e-torq', 'fire'].includes(token),
     );
-    const cylinderCar = tokens.find(token =>
-      ['1.0', '1.3', '1.6', '4'].includes(token),
+    const engineCar = tokens.find(token =>
+      ['1.0', '1.3', '1.6', '1.4'].includes(token),
     );
     const yearCar = tokens.find(token => /\b\d{4}\b/.test(token));
 
     const inforCar = await Car.findOne({
+      engine_name: engineCarname,
       engine: engineCar,
-      cylinder: cylinderCar,
-      year: yearCar,
+      $and: [{ year_init: { $lte: yearCar } }, { year_end: { $gte: yearCar } }],
     });
 
-    console.log(inforCar);
-    return inforCar;
+    const documentOil = await Oil.findById(inforCar.oil);
+    const documentOilFilter = await OilFilter.findById(inforCar.oilFilter);
+
+    const oilValue =
+      parseFloat(documentOil.price) * parseFloat(inforCar.oil_quantity);
+    const exchangeValue = oilValue + parseFloat(documentOilFilter.price);
+
+    if (!inforCar) {
+      await this.sendMessage(
+        to,
+        'Desculpe, não consegui achar nada com as informação que você deu. Dá uma conferida se colocou direitinho o nome do motor, modelo e ano, tudo numa linha só, por favor? \n\n Ex: (fire 1.0 2010)',
+      );
+    }
+
+    await this.sendMessage(
+      to,
+      `Seu carro como o motor ${engineCarname} ${engineCar}, requer exatamente ${inforCar.exact_quantity} litros de óleo, e, como cada litro de óleo corresponde a 1 litro, a quatidade que vai ser usada será de ${inforCar.oil_quantity} litros. \n\nA troca completa com o óleo promocional ${documentOil.name} ${documentOil.viscosity} viscosidade recomendada, ficará em R$${exchangeValue},00 `,
+    );
   }
 
   // Função auxiliar para enviar mensagens usando o cliente Twilio
