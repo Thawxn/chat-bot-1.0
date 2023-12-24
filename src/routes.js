@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import express from 'express';
 
 // Importando controllers
-import HomeController from './controllers/HomeController.js';
+// import HomeController from './controllers/HomeController.js';
 import UserController from './controllers/UserController.js';
 import SessionController from './controllers/SessionController.js';
 import StoreController from './controllers/StoreController.js';
@@ -13,10 +13,10 @@ import ChatController from './controllers/Chatcontroller.js';
 // importando middleware
 import middleware from './middlewares/middleware.js';
 
-const routes = new Router();
+const routes = new express.Router();
 
 // Homer
-routes.get('/', HomeController.index);
+// routes.post('/teste', express.json(), HomeController.index);
 
 // User
 routes.post('/user/register', UserController.register); // registrando usuário
@@ -78,6 +78,8 @@ routes.delete(
 ); // deletando filtro de óleo
 
 // chat
-routes.post('/incoming', (req, res) => ChatController.zapMessage(req, res)); // rota de envio de mensagem 'Chatbot'
+routes.post('/incoming', express.json(), (req, res) =>
+  ChatController.zapMessage(req, res),
+); // rota de envio de mensagem 'Chatbot'
 
 export default routes;

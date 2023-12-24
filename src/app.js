@@ -26,6 +26,7 @@ class App {
   middleware() {
     // Habilita o uso do middleware para parse de JSON nas requisições
     this.server.use(express.json());
+    this.server.use(express.urlencoded({ extended: false }));
   }
 
   // Configuração das rotas

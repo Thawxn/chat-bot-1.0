@@ -1,4 +1,4 @@
-/* eslint-disable prefer-destructuring */
+import cache from 'memory-cache';
 import Store from '../models/Store.js';
 import twilioClient from '../config/twilio.js';
 import Car from '../models/Car.js';
@@ -15,6 +15,13 @@ class ChatController {
       // Transforma o corpo da mensagem para minúsculas para facilitar a comparação
       const lowerCaseBody = Body.toLowerCase();
 
+      const isFirstMessage = !cache.get(`${From}_hasInteracted`);
+
+      if (isFirstMessage) {
+        await this.sendWelcomeMessage(From);
+        cache.put(`${From}_hasInteracted`, true, 3600000);
+      }
+
       // Divide a mensagem em partes com base no uso de 'e' ou 'e'
       const parts = lowerCaseBody.split(/ e | e/);
 
@@ -24,19 +31,15 @@ class ChatController {
       // Processa cada parte da mensagem
       // eslint-disable-next-line no-restricted-syntax
       for (const part of parts) {
-        // Verifica se a mensagem é uma saudação
-        if (this.isGreeting(part)) {
-          tasks.push(this.handleGreeting(From));
-        } else if (this.isLocationRequest(part)) {
+        if (this.isLocationRequest(part)) {
           tasks.push(this.handleLocationRequest(From));
         } else if (this.isNameRequest(part)) {
           tasks.push(this.handleNameRequest(From));
         } else if (this.isOpeHoursRequest(part)) {
           tasks.push(this.handleOpenHoursRequest(From));
         } else if (this.isBudgetFiatRequest(part)) {
-          tasks.push(this.handleFiatBudgetStep1(From));
-        } else if (this.checkCarSpecification(part, From)) {
-          console.log('sim');
+          // eslint-disable-next-line no-await-in-loop
+          await this.processFiatMessage(From, part);
         }
       }
 
@@ -49,39 +52,20 @@ class ChatController {
         .json({ success: true, message: 'Mensagem processada com sucesso.' });
     } catch (err) {
       // Trata erros e retorna uma resposta de erro
-      console.error(`Erro ao processar mensagem: ${err.message}`);
+      console.error(`Erro ao processar mensagem: ${err}`);
       return res
         .status(500)
         .json({ success: false, error: 'Erro ao processar mensagem.' });
     }
   }
 
-  // Verifica se a mensagem é uma saudação
-  isGreeting(body) {
-    return (
-      body.includes('olá') ||
-      body.includes('oi') ||
-      body.includes('e aí') ||
-      body.includes('tudo bem') ||
-      body.includes('opa') ||
-      body.includes('alô') ||
-      body.includes('ei') ||
-      body.includes('bom dia') ||
-      body.includes('boa tarde') ||
-      body.includes('boa noite') ||
-      body.includes('ola') ||
-      body.includes('eai') ||
-      body.includes('e ai')
-    );
-  }
-
-  // Envia uma resposta para uma saudação
-  async handleGreeting(to) {
+  async sendWelcomeMessage(to) {
     await this.sendMessage(
       to,
-      'Olá! Sou o ChatBot e estou aqui para atender você, caso precise de um orçamento por favor digite as informações do seu veículo dessa forma "montadora do veículo, nome do veículo", também consigo fornecer informação básica sobre a loja como localização e horário de funcionamento.',
+      'Olá! Sou o ChatBot e estou aqui para atender você, caso precise de um orçamento por favor nos informe\n\n "montadora do veículo ou nome do veículo" \n\n também consigo fornecer informação básica sobre a loja como localização e horário de funcionamento.',
     );
-    console.log('Resposta enviada: Saudação');
+
+    console.log('Resposta enviada: Mensagem de Boas-Vindas');
   }
 
   // Verifica se a mensagem é um pedido de informação da localização da loja
@@ -195,27 +179,51 @@ class ChatController {
 
   // Verificar montadora do carro para passar orçamento
   isBudgetFiatRequest(body) {
-    return body.includes('fiat');
+    return (
+      body.includes('fiat') ||
+      body.includes('uno') ||
+      body.includes('mobi') ||
+      body.includes('argo') ||
+      body.includes('cronos') ||
+      body.includes('strada') ||
+      body.includes('doblo') ||
+      body.includes('fiorino') ||
+      body.includes('palio') ||
+      body.includes('siena') ||
+      body.includes('500') ||
+      body.includes('linea') ||
+      body.includes('bravo')
+    );
+  }
+
+  async processFiatMessage(to, body) {
+    const carSpecs = await this.checkCarSpecification(body);
+
+    if (carSpecs) {
+      await this.quoteFiatCar(carSpecs, to);
+    } else {
+      await this.handleFiatBudgetStep1(to);
+    }
   }
 
   // Enviar uma resposta para uma solicitação de orçamento Fiat
   async handleFiatBudgetStep1(to) {
     await this.sendMessage(
       to,
-      'Para fornecer um orçamento preciso, precisamos de algumas informações sobre o seu veículo Fiat.\n\nPor favor, informe o nome do motor (por exemplo, Fire, FireFly, Evo, E-Torq), as cilindradas (1.0, 1.3, etc.) e o ano do veículo. Digite as informações no seguinte formato: "Nome do Motor, Cilindradas, Ano".',
+      'Para um orçamento preciso, precisamos de algumas informações sobre seu veículo Fiat.\n\n1 - Informe o modelo do carro\n2 - Informe o nome do motor (Fire, FireFly, Evo, E-Torq)\n3 - Cilindradas (1.0, 1.3, etc.)\n4 - Ano do veículo\n\n No formato: "Nome do veiculo, Nome do Motor, Cilindradas, Ano".\n\n Esses detalhes são essenciais para identificar o filtro de óleo correto e determinar a quantidade e viscosidade recomendada. Por exemplo, o nome do motor ajuda na seleção do filtro, enquanto ano e potência são cruciais para definir a quantidade e viscosidade do óleo.',
     );
     console.log('Resposta enviada: Solicitação de Informações do Veículo Fiat');
   }
 
-  async checkCarSpecification(body, to) {
+  async checkCarSpecification(body) {
     const lowerCaseMessage = body.toLowerCase();
-    const tokens = lowerCaseMessage.split(' ');
+    const tokens = lowerCaseMessage.split(/\s*[,|]\s*|\s+/);
 
     const engineCarname = tokens.find(token =>
-      ['firefly', 'evo', 'e-torq', 'fire'].includes(token),
+      ['evo', 'firefly', 'e-torq', 'fire'].includes(token),
     );
     const engineCar = tokens.find(token =>
-      ['1.0', '1.3', '1.6', '1.4'].includes(token),
+      ['1.0', '1.3', '1.6', '1.4', '1.8'].includes(token),
     );
     const yearCar = tokens.find(token => /\b\d{4}\b/.test(token));
 
@@ -225,14 +233,19 @@ class ChatController {
       $and: [{ year_init: { $lte: yearCar } }, { year_end: { $gte: yearCar } }],
     });
 
-    const documentOil = await Oil.findById(inforCar.oil);
-    const documentOilFilter = await OilFilter.findById(inforCar.oilFilter);
+    console.log(engineCarname);
+    return inforCar;
+  }
+
+  async quoteFiatCar(result, to) {
+    const documentOil = await Oil.findById(result.oil);
+    const documentOilFilter = await OilFilter.findById(result.oilFilter);
 
     const oilValue =
-      parseFloat(documentOil.price) * parseFloat(inforCar.oil_quantity);
+      parseFloat(documentOil.price) * parseFloat(result.oil_quantity);
     const exchangeValue = oilValue + parseFloat(documentOilFilter.price);
 
-    if (!inforCar) {
+    if (!result) {
       await this.sendMessage(
         to,
         'Desculpe, não consegui achar nada com as informação que você deu. Dá uma conferida se colocou direitinho o nome do motor, modelo e ano, tudo numa linha só, por favor? \n\n Ex: (fire 1.0 2010)',
@@ -241,7 +254,7 @@ class ChatController {
 
     await this.sendMessage(
       to,
-      `Seu carro como o motor ${engineCarname} ${engineCar}, requer exatamente ${inforCar.exact_quantity} litros de óleo, e, como cada litro de óleo corresponde a 1 litro, a quatidade que vai ser usada será de ${inforCar.oil_quantity} litros. \n\nA troca completa com o óleo promocional ${documentOil.name} ${documentOil.viscosity} viscosidade recomendada, ficará em R$${exchangeValue},00 `,
+      `Seu carro com o motor ${result.engine_name} ${result.engine}, requer exatamente ${result.exact_quantity} litros de óleo, e, como cada litro de óleo corresponde a 1 litro, a quatidade que vai ser usada será de ${result.oil_quantity} litros. \n\nA troca completa com o óleo promocional ${documentOil.name} ${documentOil.viscosity} viscosidade recomendada e filtro ${documentOilFilter.name}, ficará em R$${exchangeValue},00 `,
     );
   }
 
@@ -250,7 +263,7 @@ class ChatController {
     await twilioClient.messages.create({
       body: message,
       from: 'whatsapp:+14155238886',
-      to: `whatsapp:${to}`,
+      to: `whatsapp:+553388942425`,
     });
   }
 }

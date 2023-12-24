@@ -1,28 +1,32 @@
+import twilioClient from '../config/twilio.js';
+
 class HomeController {
   index(req, res) {
-    const teste = 'fire, 1.0, 2013';
+    try {
+      console.log(req.body.Body);
 
-    // Use uma expressão regular que considere vírgulas, espaços ou hífens como delimitadores
-    const parts = teste.split(/\s*[,|-]\s*|\s+/);
+      let messageToSend = '';
 
-    // Defina as palavras-chave que você está procurando
-    const palavrasChave = ['fire', '1.0', '2013', '2.0', '2020'];
-
-    // Objeto para armazenar as informações analisadas
-    const carInfo = {};
-
-    // Iterar sobre as partes e verificar se cada parte contém uma palavra-chave
-    // eslint-disable-next-line no-restricted-syntax
-    for (const palavraChave of palavrasChave) {
-      const parteEncontrada = parts.find(part => part.includes(palavraChave));
-
-      if (parteEncontrada) {
-        // Adicione a parte encontrada ao objeto de informações do carro
-        carInfo[palavraChave] = parteEncontrada;
+      if (req.body === 'Hi') {
+        messageToSend = 'Hello Word';
+      } else {
+        // eslint-disable-next-line prefer-template
+        messageToSend = 'hello ' + req.body;
       }
-    }
 
-    console.log(carInfo);
+      twilioClient.messages
+        .create({
+          body: messageToSend,
+          from: 'whatsapp:+14155238886',
+          to: `whatsapp:+553388942425`,
+        })
+        .then(messege => {
+          console.log(messege.sid);
+          console.log(messege.body);
+        });
+    } catch (err) {
+      console.log(err);
+    }
   }
 }
 
