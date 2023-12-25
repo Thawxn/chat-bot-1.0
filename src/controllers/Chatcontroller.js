@@ -8,50 +8,48 @@ import OilFilter from '../models/OilFilter.js';
 class ChatController {
   // Função principal para processar mensagens do WhatsApp
   async zapMessage(req, res) {
-    // Extração de dados da requisição
+    console.log(req.body);
     const { From, Body } = req.body;
 
     try {
-      // Transforma o corpo da mensagem para minúsculas para facilitar a comparação
       const lowerCaseBody = Body.toLowerCase();
 
-      const isFirstMessage = !cache.get(`${From}_hasInteracted`);
+      // Verifica se a mensagem de boas-vindas já foi enviada
+      const hasInteracted = cache.get(`${From}_hasInteracted`);
 
-      if (isFirstMessage) {
+      if (!hasInteracted) {
+        // Se ainda não interagiu, envia a mensagem de boas-vindas
         await this.sendWelcomeMessage(From);
         cache.put(`${From}_hasInteracted`, true, 3600000);
+      } else {
+        // Se já interagiu, processa o corpo da mensagem
+        const parts = lowerCaseBody.split(/ ' ' | ' ' /);
+
+        const tasks = parts
+          .map(part => {
+            if (this.isLocationRequest(part)) {
+              return this.handleLocationRequest(From);
+            }
+            if (this.isNameRequest(part)) {
+              return this.handleNameRequest(From);
+            }
+            if (this.isOpeHoursRequest(part)) {
+              return this.handleOpenHoursRequest(From);
+            }
+            if (this.isBudgetFiatRequest(part)) {
+              return this.processFiatMessage(From, part);
+            }
+            return null;
+          })
+          .filter(task => task !== null);
+
+        await Promise.all(tasks);
       }
 
-      // Divide a mensagem em partes com base no uso de 'e' ou 'e'
-      const parts = lowerCaseBody.split(/ e | e/);
-
-      // Array para armazenar as tarefas assíncronas
-      const tasks = [];
-
-      // Processa cada parte da mensagem
-      // eslint-disable-next-line no-restricted-syntax
-      for (const part of parts) {
-        if (this.isLocationRequest(part)) {
-          tasks.push(this.handleLocationRequest(From));
-        } else if (this.isNameRequest(part)) {
-          tasks.push(this.handleNameRequest(From));
-        } else if (this.isOpeHoursRequest(part)) {
-          tasks.push(this.handleOpenHoursRequest(From));
-        } else if (this.isBudgetFiatRequest(part)) {
-          // eslint-disable-next-line no-await-in-loop
-          await this.processFiatMessage(From, part);
-        }
-      }
-
-      // Espera que todas as tarefas assíncronas sejam concluídas antes de continuar
-      await Promise.all(tasks);
-
-      // Responde com sucesso
       return res
         .status(200)
         .json({ success: true, message: 'Mensagem processada com sucesso.' });
     } catch (err) {
-      // Trata erros e retorna uma resposta de erro
       console.error(`Erro ao processar mensagem: ${err}`);
       return res
         .status(500)
@@ -216,16 +214,17 @@ class ChatController {
   }
 
   async checkCarSpecification(body) {
+    console.log(body);
     const lowerCaseMessage = body.toLowerCase();
-    const tokens = lowerCaseMessage.split(/\s*[,|]\s*|\s+/);
+    const words = lowerCaseMessage.match(/\b[^\s]+\b/g) || [];
 
-    const engineCarname = tokens.find(token =>
-      ['evo', 'firefly', 'e-torq', 'fire'].includes(token),
+    const engineCarname = words.find(word =>
+      ['evo', 'e-torq', 'firefly', 'fire'].some(term => word.includes(term)),
     );
-    const engineCar = tokens.find(token =>
-      ['1.0', '1.3', '1.6', '1.4', '1.8'].includes(token),
+    const engineCar = words.find(word =>
+      ['1.0', '1.3', '1.6', '1.4', '1.8'].includes(word),
     );
-    const yearCar = tokens.find(token => /\b\d{4}\b/.test(token));
+    const yearCar = words.find(word => /\b\d{4}\b/.test(word));
 
     const inforCar = await Car.findOne({
       engine_name: engineCarname,
@@ -233,7 +232,8 @@ class ChatController {
       $and: [{ year_init: { $lte: yearCar } }, { year_end: { $gte: yearCar } }],
     });
 
-    console.log(engineCarname);
+    console.log(lowerCaseMessage);
+    console.log(words);
     return inforCar;
   }
 
