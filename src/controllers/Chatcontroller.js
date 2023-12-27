@@ -8,7 +8,6 @@ import OilFilter from '../models/OilFilter.js';
 class ChatController {
   // Função principal para processar mensagens do WhatsApp
   async zapMessage(req, res) {
-    console.log(req.body);
     const { From, Body } = req.body;
 
     try {
@@ -22,28 +21,18 @@ class ChatController {
         await this.sendWelcomeMessage(From);
         cache.put(`${From}_hasInteracted`, true, 3600000);
       } else {
-        // Se já interagiu, processa o corpo da mensagem
-        const parts = lowerCaseBody.split(/ ' ' | ' ' /);
-
-        const tasks = parts
-          .map(part => {
-            if (this.isLocationRequest(part)) {
-              return this.handleLocationRequest(From);
-            }
-            if (this.isNameRequest(part)) {
-              return this.handleNameRequest(From);
-            }
-            if (this.isOpeHoursRequest(part)) {
-              return this.handleOpenHoursRequest(From);
-            }
-            if (this.isBudgetFiatRequest(part)) {
-              return this.processFiatMessage(From, part);
-            }
-            return null;
-          })
-          .filter(task => task !== null);
-
-        await Promise.all(tasks);
+        if (this.isLocationRequest(lowerCaseBody)) {
+          await this.handleLocationRequest(From);
+        }
+        if (this.isNameRequest(lowerCaseBody)) {
+          await this.handleNameRequest(From);
+        }
+        if (this.isOpeHoursRequest(lowerCaseBody)) {
+          await this.handleOpenHoursRequest(From);
+        }
+        if (this.isBudgetFiatRequest(lowerCaseBody)) {
+          await this.processFiatMessage(From, lowerCaseBody);
+        }
       }
 
       return res
@@ -214,7 +203,6 @@ class ChatController {
   }
 
   async checkCarSpecification(body) {
-    console.log(body);
     const lowerCaseMessage = body.toLowerCase();
     const words = lowerCaseMessage.match(/\b[^\s]+\b/g) || [];
 
@@ -232,8 +220,6 @@ class ChatController {
       $and: [{ year_init: { $lte: yearCar } }, { year_end: { $gte: yearCar } }],
     });
 
-    console.log(lowerCaseMessage);
-    console.log(words);
     return inforCar;
   }
 
